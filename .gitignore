@@ -1,0 +1,13 @@
+# 問題記述・画像・生成物はレポジトリに含めない
+/img/
+/md/
+/out/
+/tmp/
+
+# 作業用ファイル
+/changing/
+/download/
+/unadopted/
+/hiragana.csv
+/katakana.txt
+*:Zone.Identifier
