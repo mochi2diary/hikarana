@@ -247,6 +247,11 @@ class MdParser
       warn_at('画像のパスが空です(空の画像エリアにします)', line: lineno)
       return Elem.new(type: :image, path: '', exists: false)
     end
+    # img/ からの相対パスのみ許す(サブディレクトリは可)。絶対パスや ".." による外部参照は不可。
+    if path.start_with?('/') || path.split('/').include?('..')
+      warn_at("画像は img/ からの相対パスで指定してください(空の画像エリアにします): #{path}", line: lineno)
+      return Elem.new(type: :image, path: path, exists: false)
+    end
     exists = File.file?(File.join(@img_dir, path))
     warn_at("画像ファイルが見つかりません(空の画像エリアにします): #{File.join(@img_dir, path)}", line: lineno) unless exists
     Elem.new(type: :image, path: path, exists: exists)
