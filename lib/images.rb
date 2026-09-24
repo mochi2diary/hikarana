@@ -64,6 +64,7 @@ def prepare_images(pages, img_dir:, cache_dir:, dpi:, quality:, converter: :auto
   end
 
   failed = []
+  results = nil
   unless jobs.empty?
     jobs.each_value { |dst| FileUtils.mkdir_p(File.dirname(dst)) }
     results = conv == :vips ? run_vips(jobs, px, quality) : run_imgconv(jobs, px, quality)
@@ -84,16 +85,23 @@ def prepare_images(pages, img_dir:, cache_dir:, dpi:, quality:, converter: :auto
 
     els.each { |e| e.embed = dst }
   end
-  puts "画像: #{targets.size} 件(変換 #{jobs.size - failed.size} 件, キャッシュ #{targets.size - jobs.size} 件, #{conv}) " \
+  copied = (results || []).count { |r| r['ok'] && r['copied'] }
+  puts "画像: #{targets.size} 件(変換 #{jobs.size - failed.size - copied} 件, そのまま #{copied} 件, " \
+       "キャッシュ #{targets.size - jobs.size} 件, #{conv}) " \
        "長辺 #{px}px(#{dpi}dpi) JPEG 品質 #{quality} → #{cache_dir}"
 end
 
 # ---- vips (ruby-vips) ------------------------------------------------------
 
 # 長辺 px に縮小(拡大はしない)し、透過は白に合成、sRGB・4:4:4 の JPEG で保存する。
+# 元が既に長辺 px 以下の JPEG なら再エンコードせずそのままコピーする(二重の不可逆圧縮を避ける)。
 def run_vips(jobs, px, quality)
   jobs.map do |src, dst|
     begin
+      if jpeg_passthrough_vips?(src, px)
+        FileUtils.cp(src, dst)
+        next { 'src' => src, 'dst' => dst, 'ok' => true, 'copied' => true }
+      end
       # thumbnail は EXIF の回転を反映し、size: :down で拡大を抑止する。
       im = Vips::Image.thumbnail(src, px, height: px, size: :down)
       im = im.flatten(background: [255, 255, 255]) if im.has_alpha?
@@ -104,6 +112,17 @@ def run_vips(jobs, px, quality)
       { 'src' => src, 'dst' => dst, 'ok' => false, 'error' => e.message.strip }
     end
   end
+end
+
+# 元画像がそのまま使える JPEG か(長辺 px 以下、透過なし、EXIF の回転なし)。ヘッダだけ読む。
+def jpeg_passthrough_vips?(src, px)
+  im = Vips::Image.new_from_file(src, access: :sequential)
+  return false unless im.get('vips-loader').start_with?('jpeg')
+  return false if [im.width, im.height].max > px || im.has_alpha?
+
+  im.get_typeof('orientation').zero? || im.get('orientation') == 1
+rescue Vips::Error
+  false
 end
 
 # ---- pillow (imgconv.py) ---------------------------------------------------

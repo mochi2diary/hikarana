@@ -11,3 +11,6 @@
 /hiragana.csv
 /katakana.txt
 *:Zone.Identifier
+
+# Python のバイトコード
+__pycache__/
