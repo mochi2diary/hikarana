@@ -19,17 +19,17 @@ AREA_W = PAGE_W - 2 * MARGIN # 印字可能幅(277mm)
 AREA_H = PAGE_H - 2 * MARGIN # 印字可能高さ(190mm)
 
 # ---- タイトル / 問題説明 / 問題種別番号 ----------------------------------
-TITLE_FS      = 16   # タイトル(pt)
-DESC_FS       = 12   # 問題説明(pt)
+# タイトルと問題説明は最右の同じ列に置く(問題説明はタイトルの下 20mm から)。
+TITLE_FS      = 18   # タイトル(pt)。Bold
+DESC_FS       = 12   # 問題説明(pt)。Regular。タイトル列(18pt)の中央に揃える
 NUMBER_FS     = 8    # 問題種別番号(pt)
-TITLE_GAP     = 20 * MM # タイトル → 問題説明エリアの空き
-DESC_TOP      = 30 * MM # 問題説明の上端(上マージン端から)
-DESC_GAP      = 20 * MM # 問題説明エリア → 内容エリアの空き
+TITLE_GAP     = 15 * MM # タイトルの下端 → 問題説明の上端の空き
+DESC_GAP      = 15 * MM # タイトル/問題説明の列 → 内容エリアの空き
 DEFAULT_TITLE = 'ひらカナマスター'
-DEFAULT_DESC  = 'え や ぶんしょう と あうように わくのなかに じをかいてください。'
+DEFAULT_DESC  = 'え と あうように わくのなかに じをかいてください。'
 
 # 内容エリアの右端位置(上マージン端の右端からの距離)
-CONTENT_RIGHT_OFFSET = TITLE_FS + TITLE_GAP + DESC_FS + DESC_GAP
+CONTENT_RIGHT_OFFSET = TITLE_FS + DESC_GAP
 CONTENT_W = AREA_W - CONTENT_RIGHT_OFFSET # 内容エリアの使える幅
 
 # ---- 内容エリア -----------------------------------------------------------
@@ -40,23 +40,31 @@ RUBY_GAP   = 3  # 記入欄とふりがなの隙間(pt)
 HINT_EM    = 24 * MM # ヒント文字の em ボックス(mm)
 HINT_LUMA  = 200     # ヒント文字の色(luma。大きいほど薄い)
 
-BOX_SIZE   = 30 * MM   # 記入欄 1 コマの外寸(正方形)
-BOX_STROKE = 0.75 * MM # コマの枠線(実線・黒)
+BOX_SIZE   = 29.5 * MM # 記入欄 1 コマの外寸(正方形)。画像(30mm)よりわずかに小さい
+BOX_STROKE = 0.5 * MM  # コマの枠線(実線・黒)
 GUIDE_STROKE = 0.5 * MM # 分割線(点線・灰)
 GUIDE_LUMA   = 150
 BOX_PITCH  = BOX_SIZE - BOX_STROKE # 連続する記入欄の境界線どうしの間隔
 IMAGE_SIZE = 30 * MM   # 画像エリア(正方形)
 
-ELEM_GAP = 12 # 同一行内の要素(文字/記入欄/画像)どうしの隙間(pt)。space の前後は 0。
+# 同一行内の隣接要素の隙間(pt)。種別の組(ソート済み)ごとに定める。space の前後は常に 0。
+ELEM_GAPS = {
+  %i[boxes text]  => 12, # 文字 - 記入欄
+  %i[image text]  => 12, # 文字 - 画像
+  %i[image image] => 0,  # 画像 - 画像
+  %i[boxes image] => 0   # 画像 - 記入欄
+}.freeze
+ELEM_GAP = 12 # 上の表にない組の既定値
 
-# 行間(pt)
-LINE_GAP_SECTION = 18      # セクションタイトルと他の行
-LINE_GAP_TEXT    = 12      # 地の文のみの行どうし
-LINE_GAP_MIXED   = 18      # 地の文のみの行と記入欄/画像のある行
-LINE_GAP_BOXES   = 20 * MM # 記入欄/画像のある行どうし
+# 行間(pt)。行種別ごとに変えられるよう分けて持つ。
+LINE_GAP_SECTION        = 18 # セクションタイトルと次の行(セクションタイトルが 2 行続く場合もこれ)
+LINE_GAP_BEFORE_SECTION = 15 * MM # 前の行とセクションタイトル
+LINE_GAP_TEXT           = 18 # 地の文のみの行どうし
+LINE_GAP_MIXED          = 18 # 地の文のみの行と記入欄/画像のある行
+LINE_GAP_BOXES          = 18 # 記入欄/画像のある行どうし
 
 # ---- こっそり解答 ---------------------------------------------------------
-ANSWER_FS     = 9
+ANSWER_FS     = 10
 ANSWER_PREFIX = 'こたえ：'
 ANSWER_SEP    = '　'
 

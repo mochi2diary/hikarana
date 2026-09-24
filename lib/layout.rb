@@ -16,9 +16,11 @@ def elem_height(el)
   end
 end
 
-# 同一行内の隣接要素の隙間。space の前後は 0、それ以外は 12pt。
+# 同一行内の隣接要素の隙間。space の前後は 0、それ以外は ELEM_GAPS の表による。
 def elem_gap(a, b)
-  a.type == :space || b.type == :space ? 0 : ELEM_GAP
+  return 0 if a.type == :space || b.type == :space
+
+  ELEM_GAPS.fetch([a.type, b.type].sort, ELEM_GAP)
 end
 
 def line_height(line)
@@ -33,30 +35,40 @@ def line_kind(line)
   line.elements.all? { |e| e.type == :text } ? :text : :boxes
 end
 
-# 行の本体幅(左右中央を揃える対象の幅)。ふりがなは含めない。
-def line_cw(line)
-  case line_kind(line)
-  when :section then SECTION_FS
-  when :text    then BODY_FS
-  else               BOX_SIZE
+# 要素の幅(左右中央を揃える対象の幅)。space は幅を持たない。
+def elem_width(el)
+  case el.type
+  when :text  then el.fs
+  when :boxes then BOX_SIZE
+  when :image then IMAGE_SIZE
+  else 0
   end
 end
 
-# ふりがなによる右側への張り出し幅
+# 行の本体幅 = 行内で最も幅の広い要素の幅。ふりがなは含めない。
+def line_cw(line)
+  [line.elements.map { |e| elem_width(e) }.max || 0, BODY_FS].max
+end
+
+# ふりがなによる右側への張り出し幅。記入欄は本体幅の中央に置かれるので、
+# 記入欄の右端(= (cw + BOX_SIZE) / 2)から隙間とふりがなの分だけ右に出た量を本体幅から測る。
 def line_ext(line)
   has_ruby = line.elements.any? { |e| e.type == :boxes && e.cells.any? { |c| !c.ruby.empty? } }
-  has_ruby ? RUBY_GAP + RUBY_FS : 0
+  return 0 unless has_ruby
+
+  [(line_cw(line) + BOX_SIZE) / 2.0 + RUBY_GAP + RUBY_FS - line_cw(line), 0].max
 end
 
 def line_width(line)
   line_cw(line) + line_ext(line)
 end
 
-# 行間
+# 行間。a が前(右)の行、b が次(左)の行。
 def line_gap(a, b)
   ka = line_kind(a)
   kb = line_kind(b)
-  return LINE_GAP_SECTION if ka == :section || kb == :section
+  return LINE_GAP_SECTION if ka == :section        # セクションタイトルと次の行(2 行連続も含む)
+  return LINE_GAP_BEFORE_SECTION if kb == :section # 前の行とセクションタイトル
   return LINE_GAP_TEXT if ka == :text && kb == :text
   return LINE_GAP_BOXES if ka == :boxes && kb == :boxes
 
@@ -92,8 +104,9 @@ def check_page(page)
   if text_height(page.title, TITLE_FS) > AREA_H
     hk_warn("タイトルが下マージンを超えています(#{fmt_mm(text_height(page.title, TITLE_FS))} > #{fmt_mm(AREA_H)})", file: f)
   end
-  if DESC_TOP + text_height(page.desc, DESC_FS) > AREA_H
-    hk_warn("問題説明文が下マージンを超えています(#{fmt_mm(DESC_TOP + text_height(page.desc, DESC_FS))} > #{fmt_mm(AREA_H)})", file: f)
+  desc_bottom = text_height(page.title, TITLE_FS) + TITLE_GAP + text_height(page.desc, DESC_FS)
+  if desc_bottom > AREA_H
+    hk_warn("問題説明文が下マージンを超えています(#{fmt_mm(desc_bottom)} > #{fmt_mm(AREA_H)})", file: f)
   end
   page.lines.each do |l|
     h = line_height(l)

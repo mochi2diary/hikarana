@@ -33,7 +33,6 @@ def typ_preamble
     #let DESCFS    = #{typ_pt(DESC_FS)}
     #let NUMBERFS  = #{typ_pt(NUMBER_FS)}
     #let TITLEGAP  = #{typ_pt(TITLE_GAP)}
-    #let DESCTOP   = #{typ_pt(DESC_TOP)}
     #let CONTENTOFF = #{typ_pt(CONTENT_RIGHT_OFFSET)}
     #let ANSFS     = #{typ_pt(ANSWER_FS)}
 
@@ -56,10 +55,11 @@ def typ_preamble
     // 文字は箱の左端に原点を合わせる(左揃え)。句読点や括弧(。、，：「」)は縦書き字形でも
     // 横方向の送り幅が 0.5em で、中央揃えにすると原点が 0.25em 右へ寄ってしまう。
     // 輪郭は原点基準で全角の枡の正しい位置に描かれているので、左揃えで正しく収まる。
-    #let vtext(s, size, font, fill: black) = stack(dir: ttb,
+    #let vtext(s, size, font, fill: black, weight: "regular") = stack(dir: ttb,
       ..s.clusters().map(c =>
         if c == " " { box(width: size, height: size / 2) }
-        else { box(width: size, height: size, align(left + horizon, text(font: font, size: size, fill: fill, features: VFEATS, c))) }))
+        else { box(width: size, height: size, align(left + horizon,
+          text(font: font, size: size, fill: fill, weight: weight, features: VFEATS, c))) }))
 
     // 記入欄。cells は (char: "", ruby: "") の配列。連続するコマは境界線を共有する。
     #let boxes(cells) = {
@@ -109,8 +109,10 @@ def typ_preamble
 
     // 1 ページ
     #let hkpage(title, desc, number, content, answer) = block(width: 100%, height: 100%, {
-      place(top + right, vtext(title, TITLEFS, GOTHIC))
-      place(top + right, dx: -(TITLEFS + TITLEGAP), dy: DESCTOP, vtext(desc, DESCFS, GOTHIC))
+      // タイトル(Bold)は最右上。問題説明はその下 20mm、タイトル列の中央に揃える。
+      place(top + right, vtext(title, TITLEFS, GOTHIC, weight: "bold"))
+      place(top + right, dx: -(TITLEFS - DESCFS) / 2, dy: vheight(title, TITLEFS) + TITLEGAP,
+        vtext(desc, DESCFS, GOTHIC))
       place(bottom + right, text(font: GOTHIC, size: NUMBERFS, features: HFEATS, number))
       if content != none { place(top + right, dx: -CONTENTOFF, content) }
       // こっそり解答: 左下に 180 度回転(行も文字も反転)で置く
@@ -122,7 +124,9 @@ end
 def typ_elem(el)
   case el.type
   when :text
-    "vtext(#{typ_str(el.text)}, #{typ_pt(el.fs)}, #{el.font == :title ? 'GOTHIC' : 'BODY'})"
+    # セクションタイトル(font: :title)は BIZ UDゴシックの Bold
+    el.font == :title ? "vtext(#{typ_str(el.text)}, #{typ_pt(el.fs)}, GOTHIC, weight: \"bold\")" \
+                      : "vtext(#{typ_str(el.text)}, #{typ_pt(el.fs)}, BODY)"
   when :boxes
     cells = el.cells.map { |c| "(char: #{typ_str(c.char)}, ruby: #{typ_str(c.ruby)})" }
     "boxes((#{cells.join(', ')},))"
